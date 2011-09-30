@@ -70,7 +70,7 @@ getBaseVersions ind ps =
          globver = M.fromListWith (\a b -> if a > b then a else b) vs
          updVer p = modify version (maybe id (\v -> if _version p < v then const v else id) $ M.lookup (_name p) globver) p
      return $ map updVer ps
-     
+
 -- | Manipulation functions
 
 lookupPackage :: String -> Packages -> Maybe Package
@@ -91,16 +91,22 @@ removeAll = flip $ foldr removePackage
 -- | Code for applying bumps
 
 bumpAll :: Packages -> Package -> IO ()
-bumpAll ps p = bumpPackage p >> bumpConstraints p ps
+bumpAll ps p =
+  do putStrLn $ "Bumping " ++ _name p ++ " to " ++ showVersion (_version p)
+     bumpPackage p
+     putStrLn $ "Bumping dependant packages: " ++ show (_dependants p)
+     bumpConstraints p ps
 
 bumpPackage :: Package -> IO ()
-bumpPackage p = do _ <- runCommand $ "sed -i 's/^\\([ \\t]*[Vv]ersion[ \\t]*:[ \\t]*\\).*/\\1" ++ showVersion (_version p) ++ "/g' " ++ _path p
-                   return ()
-                   
+bumpPackage p =
+  do pid <- runCommand $ "sed -i '' -e 's/^\\([ \\t]*[Vv]ersion[ \\t]*:[ \\t]*\\).*/\\1" ++ showVersion (_version p) ++ "/g' '" ++ _path p ++ "'"
+     waitForProcess pid
+     return ()
+
 bumpConstraint :: Package -> Package -> IO ()
 bumpConstraint depp inp =
     let (v0: v1: v2: v3: _) = map show $ _version depp ++ repeat 0
-        qs = intercalate "\n" $
+        qs =
            [ -- Replace entire number when entire number is used for equality
              "s/\\(==[ \\t]*\\)\\([0-9]\\+\\.\\)*[0-9]\\+\\([ \\t]\\|$\\)/\\1" ++ showVersion (_version depp) ++ "\\3/g"
              -- Replace individual digits when ending with asterisk
@@ -112,8 +118,10 @@ bumpConstraint depp inp =
            , "s/<\\([ \\t]*\\)\\([0-9]\\+\\.\\)*[0-9]\\+/<=\\1" ++ showVersion (_version depp) ++ "/g"
            , "s/\\(<=[ \\t]*\\)\\([0-9]\\+\\.\\)*[0-9]\\+/\\1" ++ showVersion (_version depp) ++ "/g"
            ]
-    in do _ <- runCommand $ "sed -i '/" ++ _name depp ++ "/ {\n " ++ qs ++ "\n}' " ++ _path inp
+        mkLine q = "sed -i -e '/" ++ _name depp ++ "/ " ++ q ++ "' '" ++ _path inp ++ "'"
+    in do putStrLn $ "Bumping dependencies on " ++ _name depp ++ " in " ++ _name inp
+          pid <- mapM_ (\q -> runCommand (mkLine q) >>= waitForProcess) qs
           return ()
-          
+
 bumpConstraints :: Package -> Packages -> IO ()
 bumpConstraints p = mapM_ (bumpConstraint p) . flip lookupPackages (_dependants p)
