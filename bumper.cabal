@@ -1,5 +1,5 @@
 Name:             bumper
-Version:          0.1
+Version:          0.2
 Synopsis:         Automatically bump package versions, also transitively
 Description:      Automatically bump package versions, also transitively
 Maintainer:       code@typlab.com
