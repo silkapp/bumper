@@ -17,6 +17,7 @@ data Config = Config
   , _ignore     :: [String]
   , _transitive :: Bool
   , _global     :: Maybe String
+  , _showDeps   :: Bool
   } deriving Show
 
 $(mkLabels [''Config])
@@ -29,6 +30,7 @@ defaultConfig = Config
     , _ignore     = ["server"]
     , _transitive = False
     , _global     = Nothing
+    , _showDeps   = True
     }
 
 versionPar :: String -> [(String, Version)]
@@ -42,9 +44,10 @@ options :: [OptDescr (Config -> Config)]
 options = [ Option ['m'] ["major"]      (ReqArg (\v -> modify bumpMajor (++ splitOn "," v)) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will get a major bump"
           , Option ['l'] ["minor"]      (ReqArg (\v -> modify bumpMinor (++ splitOn "," v)) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will get a minor bump"
           , Option ['v'] ["versions"]   (ReqArg (\v -> modify setVersion (++ versionPar v)) "PACKAGE@VERSION(,PACKAGE@VERSION)*") "Comma-separated list of packages and their versions"
-          , Option ['i'] ["ignore"]   (ReqArg (\v -> modify ignore (++ splitOn "," v)) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will be ignored when transitive bumping"
+          , Option ['i'] ["ignore"]     (ReqArg (\v -> modify ignore (++ splitOn "," v)) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will be ignored when transitive bumping"
           , Option ['t'] ["transitive"] (NoArg  (set transitive True))   "Apply bumping transitively"
           , Option ['g'] ["global"]     (OptArg  (set global) "PATH")   "Bump according to latest version number in package database"
+          , Option ['d'] ["dependants"] (NoArg (set showDeps True))     "Just output the dependencies that will be updated"
           ]
 
 getConfig :: IO Config

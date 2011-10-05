@@ -1,13 +1,14 @@
 module Main where
 
 import Data.Label
+import Data.List
 import Data.Maybe
 import Package
 import Config
 import Version
 
 main :: IO ()
-main = 
+main =
   do conf <- getConfig
      ps <- packages
      base <- maybe (return ps) (flip getBaseVersions ps) $ _global conf
@@ -15,7 +16,9 @@ main =
                applyBumps addMinor (lookupPackages base (_bumpMinor conf))
            <+> applyBumps addMajor (lookupPackages base (_bumpMajor conf))
            <+> makeVersions base (_setVersion conf)
-     mapM_ (bumpAll base) new
+     if get showDeps conf
+       then putStr $ intercalate " " $ map (get name) new
+       else mapM_ (bumpAll base) new
 
 -- | Type holding the packages to be bumped
 type BumpJob = Packages
