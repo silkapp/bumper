@@ -99,7 +99,7 @@ bumpAll ps p =
 
 bumpPackage :: Package -> IO ()
 bumpPackage p =
-  do pid <- runCommand $ "sed -i '' -e 's/^\\([ \\t]*[Vv]ersion[ \\t]*:[ \\t]*\\).*/\\1" ++ showVersion (_version p) ++ "/g' '" ++ _path p ++ "'"
+  do pid <- runCommand $ "sed -i -e 's/^\\([ \\t]*[Vv]ersion[ \\t]*:[ \\t]*\\).*/\\1" ++ showVersion (_version p) ++ "/g' '" ++ _path p ++ "'"
      waitForProcess pid
      return ()
 
