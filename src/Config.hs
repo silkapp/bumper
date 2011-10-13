@@ -30,7 +30,7 @@ defaultConfig = Config
     , _ignore     = ["server"]
     , _transitive = False
     , _global     = Nothing
-    , _showDeps   = True
+    , _showDeps   = False
     }
 
 versionPar :: String -> [(String, Version)]
