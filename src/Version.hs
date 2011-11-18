@@ -1,23 +1,65 @@
+{-# LANGUAGE
+    TypeOperators
+  , TemplateHaskell
+  #-}
 module Version where
 
+import Data.Label
 import Data.List
-import Data.List.Split
+import Distribution.Version
 
-type Version = [Int]
+$(mkLabels [''Version])
+$(mkLabels [''VersionRange])
 
-parseVersion :: String -> [Int]
-parseVersion = map read . splitOn "."
+-- | Function to bump the nth position in a version to a higher number
+-- trailing version number will be discarded
+bumpPosition :: Int -> Version -> Version
+bumpPosition p = modify lVersionBranch (addPos p)
+  where
+    addPos 0 []      = [1]
+    addPos 0 (v: _)  = [v+1]
+    addPos x []      = 0 : addPos (x - 1) []
+    addPos x (v: vs) = v : addPos (x - 1) vs
 
-showVersion :: [Int] -> String
-showVersion = intercalate "." . map show
+previousVersion :: Version -> Version
+previousVersion = modify lVersionBranch mkPrevious
+  where mkPrevious = reverse . prevHelp . reverse
+        prevHelp []     = []
+        prevHelp (x:xs) = if x <= 1 then xs else (x - 1): xs -- No trailing zeros
 
-addMinor :: [Int] -> [Int]
-addMinor (m1:m2:m3:r)= m1 : m2 : (m3+1) : r
-addMinor [m1,m2]     = [m1, m2, 1]
-addMinor [m]         = [m, 0, 1]
-addMinor []          = [0, 0, 1]
+nextVersion :: Version -> Version
+nextVersion = modify lVersionBranch mkNext
+  where mkNext = reverse . nextHelp . reverse
+        nextHelp []     = []
+        nextHelp (x:xs) = (x + 1) : xs
 
-addMajor :: [Int] -> [Int]
-addMajor (m1:m2:r) = m1 : (m2+1) : r
-addMajor [m]       = [m, 1]
-addMajor []        = [0, 1]
+-- | Make a range compatible with a version while keeping the orginal version as much intact as possible
+addVersionToRange :: Version -> VersionRange -> VersionRange
+addVersionToRange new =
+  let memoV :: (Version -> VersionRange) -> (Version -> Version) -> Version -> (VersionRange, VersionRange)
+      memoV f newF oldV = (f oldV, f . newF $ oldV)
+      --Builds up a tuple of (oldValue, newValue), we need the old value fo the union and intersection parts
+  in snd . foldVersionRange'
+            (anyVersion, anyVersion)
+            (memoV thisVersion (const new))
+            (memoV laterVersion     $ \v -> if new > v then v else previousVersion new)
+            (memoV earlierVersion   $ \v -> if new < v then v else nextVersion new)
+            (memoV orLaterVersion   $ \v -> if new >= v then v else new)
+            (memoV orEarlierVersion $ \v -> if new <= v then v else new)
+            (\v _ -> ( withinVersion v
+                     , withinVersion $
+                        if versionBranch v `isPrefixOf` versionBranch new
+                        then v
+                        -- Place the wildcard at the same position as before or eralier if the new version is s
+                        else v { versionBranch = take (length $ versionBranch v) $ versionBranch new }
+                     )
+            )
+            (\(o1, _) (o2, _) -> if withinRange new o1 || withinRange new o2
+                                   then (unionVersionRanges o1 o2, unionVersionRanges o1 o2)
+                                   else (unionVersionRanges o1 o2, unionVersionRanges (thisVersion new) (unionVersionRanges o1 o2))
+            )
+            (\(o1, _) (o2, _) -> if withinRange new o1 && withinRange new o2
+                                   then (intersectVersionRanges o1 o2, intersectVersionRanges o1 o2)
+                                   else (intersectVersionRanges o1 o2, unionVersionRanges (thisVersion new) (intersectVersionRanges o1 o2))
+            )
+            id

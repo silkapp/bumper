@@ -4,64 +4,119 @@
   #-}
 module Package where
 
+import Prelude hiding (readFile)
+
 import Control.Applicative
 import Control.Monad
 import Data.Label
 import Data.List
-import Data.List.Split
 import Data.Maybe
-import qualified Data.Map as M
-import System.IO
+import Data.Version
+import Distribution.Package hiding (Package)
+import Distribution.PackageDescription
+import Distribution.PackageDescription.Parse
+import Distribution.PackageDescription.Configuration
+import Distribution.Text
+import Distribution.Verbosity
+import System.IO.Strict
 import System.Process
+import Text.Regex
 import Version
 
 data Package = Package
-    { _name         :: String
+    { _name         :: PackageName
     , _path         :: String
     , _version      :: Version
-    , _dependencies :: [String]
-    , _dependants   :: [String]
-    } deriving (Show, Eq, Ord)
+    , _dependencies :: [Dependency]
+    , _dependants   :: [PackageName]
+    } deriving (Show, Eq)
 
 $(mkLabels [''Package])
 
 type Packages = [Package]
 
--- | Loading functions    
+-- | Accessor functions
+
+lookupPackage :: PackageName -> Packages -> Maybe Package
+lookupPackage s = find ((== s) . _name)
+
+lookupPackages ::  Packages -> [PackageName] -> Packages
+lookupPackages ps = catMaybes . map (flip lookupPackage ps)
+
+hasPackage :: Package -> Packages -> Bool
+hasPackage p = isJust . lookupPackage (_name p)
+
+removePackage :: PackageName -> Packages -> Packages
+removePackage s = filter ((/= s). _name)
+
+removeAll :: [PackageName] -> Packages -> Packages
+removeAll = flip $ foldr removePackage
+
+-- | Creates packages which represent the difference between the original and updated packages
+diffPackages :: Packages -> Packages -> Packages
+diffPackages original new = concat $
+  do orig <- original
+     n    <- new
+     let changedDeps = _dependencies n \\ _dependencies orig
+     if _name orig == _name n && (_version orig /= _version n || not (null changedDeps))
+      then return [orig { _version = _version n, _dependencies = changedDeps }]
+      else return []
+
+-- | Loading packages
 packages :: IO Packages
-packages = 
+packages =
   do (_, hOut, _, _) <- runInteractiveCommand "find . -name *.cabal -type f"
      paths <- lines <$> hGetContents hOut
-     ps <- forM paths $ \p -> do
-            v <- getVersion p
-            n <- getName p
-            return $ Package n p v [] []
-     makeDependants <$> makeDependencies ps
+     ps <- forM paths $ \p ->
+            do pkg <- flattenPackageDescription `liftM` readPackageDescription normal p
+               return $ Package
+                          { _name = pkgName $ package pkg
+                          , _path = p
+                          , _version = pkgVersion $ package pkg
+                          , _dependencies = buildDepends pkg
+                          , _dependants = []
+                          }
+     return $ makeDependants ps
 
-getName :: String -> IO String
-getName p = 
-  do (_, hOut, _, _) <- runInteractiveCommand $ "cat " ++ p ++ " | sed -n 's/^[ \\t]*[Nn]ame[ \\t]*:[ \\t]*\\(.*\\)/\\1/g p'"
-     head . lines <$> hGetContents hOut
-
-getVersion :: String -> IO [Int]
-getVersion p =
-  do (_, hOut, _, _) <- runInteractiveCommand $ "cat " ++ p ++ " | sed -n 's/^[ \\t]*[Vv]ersion[ \\t]*:[ \\t]*\\(.*\\)/\\1/g p'"
-     fmap read . splitOn "." <$> hGetContents hOut
-
-makeDependencies :: Packages -> IO Packages
-makeDependencies ps = 
-  do let names = map _name ps
-         qs = intercalate "\n" $ map (\n -> "s/^[ \\t,]*" ++ n ++ "[ \t].*/" ++ n ++ "/g p") names  
-     forM ps $ \p -> do
-        (_, hOut, _, _) <- runInteractiveCommand $ "sed -n '" ++ qs ++ "' " ++ (_path p)
-        deps <- lines <$> hGetContents hOut
-        return (set dependencies deps p)
-
+-- | Calculate the dependants from the dependencies
+-- the boolean represents whether packages which are out of the version range of dependencies are treated as dependants
 makeDependants :: Packages -> Packages
 makeDependants ps =
-  do p  <- ps
-     return $ set dependants [ _name p' | p' <- ps, elem (_name p) (_dependencies p')] p
+  do p <- ps
+     return $ set dependants [ _name p' | p' <- ps, any (\(Dependency n _) -> n == _name p') (_dependencies p')] p
 
+-- | Update all dependencies on one package
+updateDependencies :: Package -> Packages -> Packages
+updateDependencies p = map $ modify dependencies (map updateDep)
+  where updateDep d@(Dependency n r) | _name p == n = Dependency n (addVersionToRange (_version p) r)
+                                     | otherwise    = d
+
+updateAllDependencies :: Packages -> Packages
+updateAllDependencies ps = foldr updateDependencies ps ps
+
+-- | Manipulating package contents
+whiteReg :: String
+whiteReg = "[ \n\t]*"
+
+modifyVersion :: Version -> String -> String
+modifyVersion v s = subRegex (mkRegexWithOpts regex False False) s result
+  where regex = "(version" ++ whiteReg ++ ":" ++ whiteReg ++ ") ([0-9.a-zA-Z]+)"
+        result = "\\1 " ++ display v
+
+modifyDependency :: Dependency -> String -> String
+modifyDependency (Dependency nm range) s = subRegex (mkRegexWithOpts regex False False) s result
+  where regex = "(build-depends" ++ whiteReg ++ ":" ++ "[^:]*"
+              ++ "[ ,\n\t]" ++ display nm ++ whiteReg ++ ")[, ]([" ++ rangeChar ++ " \t\n]*[" ++ rangeChar ++ "])"
+        rangeChar = "0-9.*&|()<>="
+        result = "\\1 " ++ display range
+
+modifyPackage :: Package -> String -> String
+modifyPackage p = flip (foldr modifyDependency) (_dependencies p) . modifyVersion (_version p)
+
+savePackage :: Package -> IO ()
+savePackage p = readFile (_path p) >>= writeFile (_path p) . modifyPackage p
+
+{-
 getBaseVersions :: String -> Packages -> IO Packages
 getBaseVersions ind ps =
   do (_, hOut, _, _) <- runInteractiveCommand $ "tar -tf " ++ ind
@@ -70,58 +125,4 @@ getBaseVersions ind ps =
          globver = M.fromListWith (\a b -> if a > b then a else b) vs
          updVer p = modify version (maybe id (\v -> if _version p < v then const v else id) $ M.lookup (_name p) globver) p
      return $ map updVer ps
-
--- | Manipulation functions
-
-lookupPackage :: String -> Packages -> Maybe Package
-lookupPackage s = find ((== s) . _name)
-
-lookupPackages ::  Packages -> [String] -> Packages
-lookupPackages ps = catMaybes . map (flip lookupPackage ps)
-
-hasPackage :: Package -> Packages -> Bool
-hasPackage p = isJust . lookupPackage (_name p)
-
-removePackage :: String -> Packages -> Packages
-removePackage s = filter ((/= s). _name)
-
-removeAll :: [String] -> Packages -> Packages 
-removeAll = flip $ foldr removePackage
-
--- | Code for applying bumps
-
-bumpAll :: Packages -> Package -> IO ()
-bumpAll ps p =
-  do putStrLn $ "Bumping " ++ _name p ++ " to " ++ showVersion (_version p)
-     bumpPackage p
-     putStrLn $ "Bumping dependant packages: " ++ show (_dependants p)
-     bumpConstraints p ps
-
-bumpPackage :: Package -> IO ()
-bumpPackage p =
-  do pid <- runCommand $ "sed -i -e 's/^\\([ \\t]*[Vv]ersion[ \\t]*:[ \\t]*\\).*/\\1" ++ showVersion (_version p) ++ "/g' '" ++ _path p ++ "'"
-     waitForProcess pid
-     return ()
-
-bumpConstraint :: Package -> Package -> IO ()
-bumpConstraint depp inp =
-    let (v0: v1: v2: v3: _) = map show $ _version depp ++ repeat 0
-        qs =
-           [ -- Replace entire number when entire number is used for equality
-             "s/\\(==[ \\t]*\\)\\([0-9]\\+\\.\\)*[0-9]\\+\\([ \\t]\\|$\\)/\\1" ++ showVersion (_version depp) ++ "\\3/g"
-             -- Replace individual digits when ending with asterisk
-           , "s/\\(==[ \\t]*\\)[0-9]\\+\\(.*\\*\\)/\\1" ++ v0 ++"\\2/g"
-           , "s/\\(==[ \\t]*[0-9]\\+\\.\\)[0-9]\\+\\(.*\\*\\)/\\1" ++ v1 ++ "\\2/g"
-           , "s/\\(==[ \\t]*\\([0-9]\\+\\.\\)\\{2\\}\\)[0-9]\\+\\(.*\\*\\)/\\1" ++ v2 ++ "\\3/g"
-           , "s/\\(==[ \\t]*\\([0-9]\\+\\.\\)\\{3\\}\\)[0-9]\\+\\(.*\\*\\)/\\1" ++ v3 ++ "\\3/g"
-             -- Replace lower than constraints
-           , "s/<\\([ \\t]*\\)\\([0-9]\\+\\.\\)*[0-9]\\+/<=\\1" ++ showVersion (_version depp) ++ "/g"
-           , "s/\\(<=[ \\t]*\\)\\([0-9]\\+\\.\\)*[0-9]\\+/\\1" ++ showVersion (_version depp) ++ "/g"
-           ]
-        mkLine q = "sed -i -e '/" ++ _name depp ++ "/ " ++ q ++ "' '" ++ _path inp ++ "'"
-    in do putStrLn $ "Bumping dependencies on " ++ _name depp ++ " in " ++ _name inp
-          pid <- mapM_ (\q -> runCommand (mkLine q) >>= waitForProcess) qs
-          return ()
-
-bumpConstraints :: Package -> Packages -> IO ()
-bumpConstraints p = mapM_ (bumpConstraint p) . flip lookupPackages (_dependants p)
+-}

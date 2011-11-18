@@ -11,6 +11,7 @@ Build-Type:       Simple
 
 Executable bumper
   Build-Depends:    base == 4.*
+                  , Cabal ==1.10.*
                   , ConfigFile == 1.0.*
                   , HTTP >= 4000.0 && < 4000.2
                   , bytestring == 0.9.*
@@ -22,7 +23,9 @@ Executable bumper
                   , network >= 2.2 && < 2.4
                   , process == 1.0.*
                   , random == 1.0.*
+                  , regex-compat == 0.95.*
                   , split == 0.1.*
+                  , strict == 0.3.2
                   , Cabal >= 1.6 && < 1.11
   GHC-Options:      -Wall
   HS-Source-Dirs:   src

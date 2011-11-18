@@ -6,16 +6,18 @@ module Config where
 
 import Data.Label
 import Data.List.Split
+import qualified Data.Map as M
+import Data.Version
+import Distribution.Package
+import Distribution.Text
 import System.Console.GetOpt
 import System.Environment
-import Version
 
 data Config = Config
-  { _bumpMajor  :: [String]
-  , _bumpMinor  :: [String]
-  , _setVersion :: [(String,Version)]
-  , _ignore     :: [String]
+  { _bump       :: M.Map Int [PackageName] -- Map of which packages to bump at which position
+  , _setVersion :: [(PackageName,Version)]
   , _transitive :: Bool
+  , _ignore     :: [PackageName]
   , _global     :: Maybe String
   , _showDeps   :: Bool
   } deriving Show
@@ -24,31 +26,39 @@ $(mkLabels [''Config])
 
 defaultConfig :: Config
 defaultConfig = Config
-    { _bumpMajor = []
-    , _bumpMinor = []
+    { _bump       = M.empty
     , _setVersion = []
-    , _ignore     = ["server"]
     , _transitive = False
+    , _ignore     = [PackageName "server"]
     , _global     = Nothing
     , _showDeps   = False
     }
 
-versionPar :: String -> [(String, Version)]
+versionPar :: String -> [(PackageName, Version)]
 versionPar = foldr addVer [] . splitOn ","
-  where addVer ver ac = 
-          case splitOn "@" ver of
-            [p,v] -> (p, parseVersion v) : ac
+  where addVer fld ac =
+          case splitOn "@" fld of
+            [p,v] -> case simpleParse v of
+                        (Just ver) -> (PackageName p, ver) : ac
+                        Nothing    -> ac
             _     -> ac
 
 options :: [OptDescr (Config -> Config)]
-options = [ Option ['m'] ["major"]      (ReqArg (\v -> modify bumpMajor (++ splitOn "," v)) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will get a major bump"
-          , Option ['l'] ["minor"]      (ReqArg (\v -> modify bumpMinor (++ splitOn "," v)) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will get a minor bump"
-          , Option ['v'] ["versions"]   (ReqArg (\v -> modify setVersion (++ versionPar v)) "PACKAGE@VERSION(,PACKAGE@VERSION)*") "Comma-separated list of packages and their versions"
-          , Option ['i'] ["ignore"]     (ReqArg (\v -> modify ignore (++ splitOn "," v)) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will be ignored when transitive bumping"
-          , Option ['t'] ["transitive"] (NoArg  (set transitive True))   "Apply bumping transitively"
-          , Option ['g'] ["global"]     (OptArg  (set global) "PATH")   "Bump according to latest version number in package database"
-          , Option ['d'] ["dependants"] (NoArg (set showDeps True))     "Just output the dependencies that will be updated"
+options = [ Option ['m'] ["major"]        (ReqArg (addBumps 1) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will get a major bump (bump at position 1)"
+          , Option ['l'] ["minor"]        (ReqArg (addBumps 2) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will get a minor bump (bump at position 2)"
+          , Option ['0'] ["bump-0"]       (ReqArg (addBumps 0) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will get a bump at position 0"
+          , Option ['1'] ["bump-1"]       (ReqArg (addBumps 1) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will get a bump at position 1"
+          , Option ['2'] ["bump-2"]       (ReqArg (addBumps 2) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will get a bump at position 2"
+          , Option ['3'] ["bump-3"]       (ReqArg (addBumps 3) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will get a bump at position 3"
+          , Option ['v'] ["versions"]     (ReqArg (\v -> modify setVersion (++ versionPar v)) "PACKAGE@VERSION(,PACKAGE@VERSION)*") "Comma-separated list of packages and their versions"
+
+          , Option ['t'] ["transitive"]   (NoArg  (set transitive True))   "Apply bumping transitively"
+          , Option ['i'] ["ignore"]       (ReqArg (\v -> modify ignore (++ map PackageName (splitOn "," v))) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will be ignored when transitive bumping"
+          , Option ['g'] ["global"]       (OptArg (set global) "PATH")   "Bump according to latest version number in the given package database"
+          , Option ['d'] ["dependants"]   (NoArg  (set showDeps True))     "Just output the dependencies that will be updated"
           ]
+      where addBumps :: Int -> String -> Config -> Config
+            addBumps p pks = modify bump (M.insertWith (++) p (map PackageName $ splitOn "," pks))
 
 getConfig :: IO Config
 getConfig =
