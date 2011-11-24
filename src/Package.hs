@@ -76,7 +76,7 @@ packages =
 makeDependants :: Packages -> Packages
 makeDependants ps =
   do p <- ps
-     return $ set dependants [ _name p' | p' <- ps, any (\(Dependency n _) -> n == _name p') (_dependencies p')] p
+     return $ set dependants [ _name p' | p' <- ps, any (\(Dependency n _) -> n == _name p) (_dependencies p')] p
 
 getBaseVersions :: String -> Packages -> IO Packages
 getBaseVersions ind ps =
