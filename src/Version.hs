@@ -5,7 +5,6 @@
 module Version where
 
 import Data.Label
-import Data.List
 import Distribution.Version
 
 $(mkLabels [''Version])
@@ -32,6 +31,32 @@ nextVersion = modify lVersionBranch mkNext
   where mkNext = reverse . nextHelp . reverse
         nextHelp []     = []
         nextHelp (x:xs) = (x + 1) : xs
+
+addVersionToRange :: Version -> VersionRange -> VersionRange
+addVersionToRange new r =
+  if withinRange new r
+  then r
+  else
+    let cVersion = const (thisVersion new)
+        c2Version = const $ const (thisVersion new)
+    in foldVersionRange'
+        anyVersion      -- any
+        cVersion        -- (==)
+        cVersion        -- >
+        cVersion        -- <
+        cVersion        -- >=
+        cVersion        -- <=
+        (\v _ -> withinVersion $ v { versionBranch = take (length $ versionBranch v) $ versionBranch new })  -- .*
+        c2Version       -- (||)
+        c2Version       -- (&&)
+        id              -- (_)
+        r
+
+
+{-
+This is a more complex solution, which tries to add the version to the range while
+keeping the old intact. This remains here becasue we may need this behavior in the future
+
 
 -- | Make a range compatible with a version while keeping the orginal version as much intact as possible
 addVersionToRange :: Version -> VersionRange -> VersionRange
@@ -63,3 +88,4 @@ addVersionToRange new =
                                    else (intersectVersionRanges o1 o2, unionVersionRanges (thisVersion new) (intersectVersionRanges o1 o2))
             )
             id
+-}
