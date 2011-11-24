@@ -54,7 +54,7 @@ options = [ Option ['m'] ["major"]        (ReqArg (addBumps 1) "PACKAGE(,PACKAGE
 
           , Option ['t'] ["transitive"]   (NoArg  (set transitive True))   "Apply bumping transitively"
           , Option ['i'] ["ignore"]       (ReqArg (\v -> modify ignore (++ map PackageName (splitOn "," v))) "PACKAGE(,PACKAGE)*") "Comma-separated list of packages which will be ignored when transitive bumping"
---          , Option ['g'] ["global"]       (OptArg (set global) "PATH")   "Bump according to latest version number in the given package database"
+          , Option ['g'] ["global"]       (OptArg (set global) "PATH")   "Bump according to latest version number in the given package database"
           , Option ['d'] ["dependants"]   (NoArg  (set showDeps True))     "Just output the dependencies that will be updated"
           ]
       where addBumps :: Int -> String -> Config -> Config

@@ -13,12 +13,13 @@ import Version
 main :: IO ()
 main =
   do conf <- getConfig
+     -- Load packages
      ps   <- packages
-     let base = ps
---     base <- maybe (return ps) (flip getBaseVersions ps) $ _global conf
-     let changed       = (if get transitive conf then trans base else id)
-                       $ concatChanges (map (\(p,pks) -> bumpVersions p pks base) (M.toAscList (get bump conf)))
-                     <.> userVersions (get setVersion conf) base
+     -- Retrieve base versions
+     base <- maybe (return ps) (flip getBaseVersions ps) $ get global conf
+     let changed = (if get transitive conf then trans base else id)
+                 $ concatChanges (map (\(p,pks) -> bumpVersions p pks base) (M.toAscList (get bump conf)))
+               <.> userVersions (get setVersion conf) base
          makeUpdates p = (M.lookup (get name p) changed, dependencyUpdates changed p)
      if get showDeps conf
        then putStr $ intercalate " " $ map display $ M.keys changed

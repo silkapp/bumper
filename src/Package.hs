@@ -1,6 +1,8 @@
+-- * Contains helper functions to load and manipulate .cabal files
 {-# LANGUAGE
     TypeOperators
   , TemplateHaskell
+  , TupleSections
   #-}
 module Package where
 
@@ -10,6 +12,8 @@ import Control.Applicative
 import Control.Monad
 import Data.Label
 import Data.List
+import Data.List.Split
+import qualified Data.Map as M
 import Data.Maybe
 import Data.Version
 import Distribution.Package hiding (Package)
@@ -74,6 +78,16 @@ makeDependants ps =
   do p <- ps
      return $ set dependants [ _name p' | p' <- ps, any (\(Dependency n _) -> n == _name p') (_dependencies p')] p
 
+getBaseVersions :: String -> Packages -> IO Packages
+getBaseVersions ind ps =
+ do (_, hOut, _, _) <- runInteractiveCommand $ "tar -tf " ++ ind
+    gps <- lines <$> hGetContents hOut
+    let vs = catMaybes $ map (parseVer . splitOn "/") gps
+        parseVer (n:v:_) = fmap (PackageName n, ) $ simpleParse v
+        parseVer _       = Nothing
+        globver = M.fromListWith (\a b -> if a > b then a else b) vs
+        updVer p = modify version (maybe id (\v -> if get version p < v then const v else id) $ M.lookup (_name p) globver) p
+    return $ map updVer ps
 
 -- | Manipulating package contents
 whiteReg :: String
@@ -101,14 +115,3 @@ modifyPackage (mv, deps) = flip (foldr modifyDependency) deps
 
 updatePackage :: Package -> PackageChanges -> IO ()
 updatePackage p ch = readFile (get path p) >>= writeFile (get path p) . modifyPackage ch
-
-{-
-getBaseVersions :: String -> Packages -> IO Packages
-getBaseVersions ind ps =
-  do (_, hOut, _, _) <- runInteractiveCommand $ "tar -tf " ++ ind
-     gps <- lines <$> hGetContents hOut
-     let vs = map ((\(n:v:_) -> (n, parseVersion v)) . splitOn "/") gps
-         globver = M.fromListWith (\a b -> if a > b then a else b) vs
-         updVer p = modify version (maybe id (\v -> if _version p < v then const v else id) $ M.lookup (_name p) globver) p
-     return $ map updVer ps
--}

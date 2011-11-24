@@ -1,3 +1,4 @@
+-- * Manipulation functions for cabal versions and version ranges
 {-# LANGUAGE
     TypeOperators
   , TemplateHaskell
@@ -51,41 +52,3 @@ addVersionToRange new r =
         c2Version       -- (&&)
         id              -- (_)
         r
-
-
-{-
-This is a more complex solution, which tries to add the version to the range while
-keeping the old intact. This remains here becasue we may need this behavior in the future
-
-
--- | Make a range compatible with a version while keeping the orginal version as much intact as possible
-addVersionToRange :: Version -> VersionRange -> VersionRange
-addVersionToRange new =
-  let memoV :: (Version -> VersionRange) -> (Version -> Version) -> Version -> (VersionRange, VersionRange)
-      memoV f newF oldV = (f oldV, f . newF $ oldV)
-      --Builds up a tuple of (oldValue, newValue), we need the old value fo the union and intersection parts
-  in snd . foldVersionRange'
-            (anyVersion, anyVersion)
-            (memoV thisVersion (const new))
-            (memoV laterVersion     $ \v -> if new > v then v else previousVersion new)
-            (memoV earlierVersion   $ \v -> if new < v then v else nextVersion new)
-            (memoV orLaterVersion   $ \v -> if new >= v then v else new)
-            (memoV orEarlierVersion $ \v -> if new <= v then v else new)
-            (\v _ -> ( withinVersion v
-                     , withinVersion $
-                        if versionBranch v `isPrefixOf` versionBranch new
-                        then v
-                        -- Place the wildcard at the same position as before or eralier if the new version is s
-                        else v { versionBranch = take (length $ versionBranch v) $ versionBranch new }
-                     )
-            )
-            (\(o1, _) (o2, _) -> if withinRange new o1 || withinRange new o2
-                                   then (unionVersionRanges o1 o2, unionVersionRanges o1 o2)
-                                   else (unionVersionRanges o1 o2, unionVersionRanges (thisVersion new) (unionVersionRanges o1 o2))
-            )
-            (\(o1, _) (o2, _) -> if withinRange new o1 && withinRange new o2
-                                   then (intersectVersionRanges o1 o2, intersectVersionRanges o1 o2)
-                                   else (intersectVersionRanges o1 o2, unionVersionRanges (thisVersion new) (intersectVersionRanges o1 o2))
-            )
-            id
--}
