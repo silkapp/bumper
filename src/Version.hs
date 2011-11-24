@@ -6,6 +6,7 @@
 module Version where
 
 import Data.Label
+import Distribution.Text
 import Distribution.Version
 
 $(mkLabels [''Version])
@@ -52,3 +53,18 @@ addVersionToRange new r =
         c2Version       -- (&&)
         id              -- (_)
         r
+
+printRange :: VersionRange -> String
+printRange =
+  let sShow s = ((s ++ " ") ++) . display
+  in foldVersionRange'
+      "*"
+      (sShow "==")
+      (sShow ">")
+      (sShow "<")
+      (sShow ">=")
+      (sShow "<=")
+      (\v _   -> "== " ++ display v ++ ".*")
+      (\v1 v2 -> v1 ++ " || " ++ v2)
+      (\v1 v2 -> v1 ++ " && " ++ v2)
+      (\v -> "(" ++ v ++ ")")

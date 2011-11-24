@@ -25,6 +25,7 @@ import Distribution.Verbosity
 import System.IO.Strict
 import System.Process
 import Text.Regex
+import Version
 
 data Package = Package
     { _name         :: PackageName
@@ -103,7 +104,7 @@ modifyDependency (Dependency nm range) s = subRegex (mkRegexWithOpts regex False
   where regex = "(build-depends" ++ whiteReg ++ ":" ++ "[^:]*"
               ++ "[ ,\n\t]" ++ display nm ++ whiteReg ++ ")[, ]([" ++ rangeChar ++ " \t\n]*[" ++ rangeChar ++ "])"
         rangeChar = "0-9.*&|()<>="
-        result = "\\1 " ++ display range
+        result = "\\1 " ++ printRange range
 
 -- | Data structure containing package modifications
 type PackageChanges = (Maybe Version, [Dependency])
