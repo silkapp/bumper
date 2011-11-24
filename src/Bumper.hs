@@ -3,7 +3,6 @@ module Main where
 import Data.Label
 import Data.List
 import qualified Data.Map as M
-import Data.Maybe
 import Distribution.Package hiding (Package)
 import Distribution.Text
 import Distribution.Version
@@ -17,53 +16,49 @@ main =
      ps   <- packages
      let base = ps
 --     base <- maybe (return ps) (flip getBaseVersions ps) $ _global conf
-     let updated = updateAllDependencies -- Update dependencies
-                 . addJobs ps            -- Add all packages which have not been changed
-                 $ new
-         new = (if _transitive conf then trans $ removeAll (_ignore conf ) base else id) -- Apply transitivity
-             . concatJobs            -- Make changed and bumped versions
-             $ map (\(p,pks) -> applyPosBumps p (lookupPackages base pks)) (M.toAscList (_bump conf))
-               ++ [makeVersions base (_setVersion conf)]
+     let changed       = (if get transitive conf then trans base else id)
+                       $ concatChanges (map (\(p,pks) -> bumpVersions p pks base) (M.toAscList (get bump conf)))
+                     <.> userVersions (get setVersion conf) base
+         makeUpdates p = (M.lookup (get name p) changed, dependencyUpdates changed p)
      if get showDeps conf
-       then putStr $ intercalate " " $ map (display . get name) new
-       else mapM_ savePackage (diffPackages ps updated)
+       then putStr $ intercalate " " $ map display $ M.keys changed
+       else mapM_ (\p -> updatePackage p (makeUpdates p)) base
 
--- | Type holding the packages to be bumped
-type BumpJob = Packages
+type Changes = M.Map PackageName Version
 
--- | Only adds a job if it doesn't already exist
-addJob :: Package -> Packages -> Packages
-addJob p ps | hasPackage p ps = ps
-            | otherwise       = p : ps
+-- Combine changes, not updating existing changes
+infixr 5 <.>
+(<.>) :: Changes -> Changes -> Changes
+(<.>) = M.unionWith (flip const)
 
-addJobs :: Packages -> Packages -> Packages
-addJobs = flip (foldr addJob)
+concatChanges :: [Changes] -> Changes
+concatChanges = foldr (<.>) M.empty
 
-infixr 5 <+>
-(<+>) :: Packages -> Packages -> Packages
-(<+>) = addJobs
+-- | Update versions
+userVersions :: [(PackageName, Version)] -> Packages -> Changes
+userVersions vs ps = M.fromList $ filter (\nv -> hasPackage (fst nv) ps) vs
 
-concatJobs :: [Packages] -> Packages
-concatJobs = foldr (<+>) []
+bumpVersions :: Int -> [PackageName] -> Packages -> Changes
+bumpVersions pos ns ps = M.fromList $ map (\p -> (get name p, bumpPosition pos (get version p))) $ lookupPackages ns ps
 
-
-makeVersions :: Packages -> [(PackageName, Version)] -> Packages
-makeVersions ps = catMaybes . map (\(n,v) -> fmap (set version v) $ lookupPackage n ps)
-
-applyPosBumps :: Int -> Packages -> Packages
-applyPosBumps pos = map (modify version (bumpPosition pos))
-
-
--- | Transitive bumping
-
-trans :: Packages -> Packages -> Packages
+-- | Make transitive changes
+trans :: Packages -> Changes -> Changes
 trans ps = fix (transStep ps)
 
-transStep :: Packages -> Packages -> Packages
-transStep ps old = new <+> old
-  where new = applyPosBumps 2 . lookupPackages ps . concatMap _dependants $ old
+transStep :: Packages -> Changes -> Changes
+transStep ps old = new <.> old
+  where deps = concatMap (get dependants) $ lookupPackages (M.keys old) ps
+        new  = M.fromList $ map (\p -> (get name p, bumpPosition 2 (get version p))) $ lookupPackages deps ps
 
 fix :: (Eq a) => (a -> a) -> a -> a
 fix f a | b == a    = a
         | otherwise = fix f b
   where b = f a
+
+-- | Caclulate updated dependencies
+dependencyUpdates :: Changes -> Package -> [Dependency]
+dependencyUpdates ch = foldr addDep [] . get dependencies
+  where addDep (Dependency n r) dps =
+          case M.lookup n ch of
+            Just v  -> Dependency n (addVersionToRange v r) : dps
+            Nothing -> dps

@@ -21,7 +21,6 @@ import Distribution.Verbosity
 import System.IO.Strict
 import System.Process
 import Text.Regex
-import Version
 
 data Package = Package
     { _name         :: PackageName
@@ -35,32 +34,22 @@ $(mkLabels [''Package])
 
 type Packages = [Package]
 
--- | Accessor functions
+-- | Helper functions
 
 lookupPackage :: PackageName -> Packages -> Maybe Package
 lookupPackage s = find ((== s) . _name)
 
-lookupPackages ::  Packages -> [PackageName] -> Packages
-lookupPackages ps = catMaybes . map (flip lookupPackage ps)
+lookupPackages ::  [PackageName] -> Packages -> Packages
+lookupPackages ns ps = catMaybes . map (flip lookupPackage ps) $ ns
 
-hasPackage :: Package -> Packages -> Bool
-hasPackage p = isJust . lookupPackage (_name p)
+hasPackage :: PackageName -> Packages -> Bool
+hasPackage n = isJust . lookupPackage n
 
 removePackage :: PackageName -> Packages -> Packages
 removePackage s = filter ((/= s). _name)
 
 removeAll :: [PackageName] -> Packages -> Packages
 removeAll = flip $ foldr removePackage
-
--- | Creates packages which represent the difference between the original and updated packages
-diffPackages :: Packages -> Packages -> Packages
-diffPackages original new = concat $
-  do orig <- original
-     n    <- new
-     let changedDeps = _dependencies n \\ _dependencies orig
-     if _name orig == _name n && (_version orig /= _version n || not (null changedDeps))
-      then return [orig { _version = _version n, _dependencies = changedDeps }]
-      else return []
 
 -- | Loading packages
 packages :: IO Packages
@@ -85,14 +74,6 @@ makeDependants ps =
   do p <- ps
      return $ set dependants [ _name p' | p' <- ps, any (\(Dependency n _) -> n == _name p') (_dependencies p')] p
 
--- | Update all dependencies on one package
-updateDependencies :: Package -> Packages -> Packages
-updateDependencies p = map $ modify dependencies (map updateDep)
-  where updateDep d@(Dependency n r) | _name p == n = Dependency n (addVersionToRange (_version p) r)
-                                     | otherwise    = d
-
-updateAllDependencies :: Packages -> Packages
-updateAllDependencies ps = foldr updateDependencies ps ps
 
 -- | Manipulating package contents
 whiteReg :: String
@@ -110,11 +91,16 @@ modifyDependency (Dependency nm range) s = subRegex (mkRegexWithOpts regex False
         rangeChar = "0-9.*&|()<>="
         result = "\\1 " ++ display range
 
-modifyPackage :: Package -> String -> String
-modifyPackage p = flip (foldr modifyDependency) (_dependencies p) . modifyVersion (_version p)
+-- | Data structure containing package modifications
+type PackageChanges = (Maybe Version, [Dependency])
 
-savePackage :: Package -> IO ()
-savePackage p = readFile (_path p) >>= writeFile (_path p) . modifyPackage p
+-- | Writing to packages
+modifyPackage :: PackageChanges -> String -> String
+modifyPackage (mv, deps) = flip (foldr modifyDependency) deps
+                         . maybe id modifyVersion mv
+
+updatePackage :: Package -> PackageChanges -> IO ()
+updatePackage p ch = readFile (get path p) >>= writeFile (get path p) . modifyPackage ch
 
 {-
 getBaseVersions :: String -> Packages -> IO Packages
