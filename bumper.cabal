@@ -1,5 +1,5 @@
 Name:             bumper
-Version:          0.3
+Version:          0.3.1
 Synopsis:         Automatically bump package versions, also transitively
 Description:      Automatically bump package versions, also transitively
 Maintainer:       code@typlab.com
@@ -23,7 +23,7 @@ Executable bumper
                   , network >= 2.2 && < 2.4
                   , process == 1.0.*
                   , random == 1.0.*
-                  , regex-compat == 0.95.*
+                  , regex-compat >= 0.93 && < 0.96
                   , split == 0.1.*
                   , strict == 0.3.2
                   , Cabal >= 1.6 && < 1.11
