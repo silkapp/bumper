@@ -32,7 +32,6 @@ data Package = Package
     , _path         :: String
     , _version      :: Version
     , _dependencies :: [Dependency]
-    , _dependants   :: [PackageName]
     } deriving (Show, Eq)
 
 $(mkLabels [''Package])
@@ -61,23 +60,14 @@ packages :: IO Packages
 packages =
   do (_, hOut, _, _) <- runInteractiveCommand "find . -name *.cabal -type f"
      paths <- lines <$> hGetContents hOut
-     ps <- forM paths $ \p ->
-            do pkg <- flattenPackageDescription `liftM` readPackageDescription normal p
-               return $ Package
-                          { _name = pkgName $ package pkg
-                          , _path = p
-                          , _version = pkgVersion $ package pkg
-                          , _dependencies = buildDepends pkg
-                          , _dependants = []
-                          }
-     return $ makeDependants ps
-
--- | Calculate the dependants from the dependencies
--- the boolean represents whether packages which are out of the version range of dependencies are treated as dependants
-makeDependants :: Packages -> Packages
-makeDependants ps =
-  do p <- ps
-     return $ set dependants [ _name p' | p' <- ps, any (\(Dependency n _) -> n == _name p) (_dependencies p')] p
+     forM paths $ \p ->
+        do pkg <- flattenPackageDescription `liftM` readPackageDescription normal p
+           return $ Package
+                      { _name = pkgName $ package pkg
+                      , _path = p
+                      , _version = pkgVersion $ package pkg
+                      , _dependencies = buildDepends pkg
+                      }
 
 getBaseVersions :: String -> Packages -> IO Packages
 getBaseVersions ind ps =

@@ -27,7 +27,7 @@ main =
 
 type Changes = M.Map PackageName Version
 
--- Combine changes, not updating existing changes
+-- Combine changes, not updating already changed packages
 infixr 5 <.>
 (<.>) :: Changes -> Changes -> Changes
 (<.>) = M.unionWith (flip const)
