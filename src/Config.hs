@@ -29,7 +29,7 @@ defaultConfig = Config
     { _bump       = M.empty
     , _setVersion = []
     , _transitive = True
-    , _ignore     = [PackageName "server"]
+    , _ignore     = []
     , _global     = Nothing
     , _showDeps   = False
     }
