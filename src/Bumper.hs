@@ -9,21 +9,33 @@ import Distribution.Version
 import Package
 import Config
 import Version
+import Data.Version
+import qualified Paths_bumper as Paths
 
 main :: IO ()
 main =
   do conf <- getConfig
-     -- Load packages
+     case get action conf of
+       ShowHelp    -> printUsage options
+       ShowVersion -> putStrLn $ "bumper, version " ++ showVersion Paths.version
+       ShowDeps    -> run conf showDeps
+       Run         -> run conf updateDeps
+  where
+    showDeps   _    changed = putStr $ intercalate " " $ map display $ M.keys changed
+    updateDeps base changed = mapM_ (\p -> updatePackage p (makeUpdates p)) base
+      where
+        makeUpdates p = (M.lookup (get name p) changed, dependencyUpdates changed p)
+
+run :: Config -> (Packages -> Changes -> IO ()) -> IO ()
+run conf act =
+  do -- Load packages
      ps   <- packages
      -- Retrieve base versions
      base <- maybe (return ps) (flip getBaseVersions ps) $ get global conf
      let changed = (if get transitive conf then trans base else id)
                  $ concatChanges (map (\(p,pks) -> bumpVersions p pks base) (M.toAscList (get bump conf)))
                <.> userVersions (get setVersion conf) base
-         makeUpdates p = (M.lookup (get name p) changed, dependencyUpdates changed p)
-     if get showDeps conf
-       then putStr $ intercalate " " $ map display $ M.keys changed
-       else mapM_ (\p -> updatePackage p (makeUpdates p)) base
+     act base changed
 
 type Changes = M.Map PackageName Version
 
