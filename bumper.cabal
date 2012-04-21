@@ -1,5 +1,5 @@
 Name:             bumper
-Version:          0.5
+Version:          0.5.0.1
 Synopsis:         Automatically bump package versions, also transitively.
 Description:      Automatically bump package versions, also transitively.
 Author:           Silk
@@ -15,17 +15,9 @@ Build-Type:       Simple
 Executable bumper
   Build-Depends:    base == 4.*
                   , Cabal        >= 1.6    && < 1.15
-                  , ConfigFile   >= 1.0    && < 1.2
-                  , HTTP         >= 4000.0 && < 4000.3
-                  , bytestring   == 0.9.*
                   , containers   == 0.4.*
-                  , directory    >= 1.0    && < 1.2
                   , fclabels     >= 1.0    && < 1.2
-                  , filepath     >= 1.1    && < 1.4
-                  , mtl          >= 1.1    && < 2.2
-                  , network      >= 2.2    && < 2.4
                   , process      >= 1.0    && < 1.2
-                  , random       == 1.0.*
                   , regex-compat >= 0.93   && < 0.96
                   , split        == 0.1.*
                   , strict       == 0.3.2
