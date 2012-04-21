@@ -35,3 +35,7 @@ Executable bumper
   Other-Modules:    Config
                     Package
                     Version
+
+Source-Repository head
+  Type:           git
+  Location:       git://github.com/silkapp/bumper.git
