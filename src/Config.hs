@@ -62,7 +62,7 @@ options = [ Option ['m'] ["major"]         (ReqArg (addBumps 1) "PACKAGE(,PACKAG
 getConfig :: IO Config
 getConfig =
   do args <- getArgs
-     (opts, _) <- processArgs defaultConfig options "Usage: deploy [OPTIONS...], with the following options (no options deploys as a library):" args
+     (opts, _) <- processArgs defaultConfig options "Usage: bumper [OPTIONS...], with the following options:" args
      return opts
 
 processArgs :: a -> [OptDescr (a -> a)] -> String -> [String] -> IO (a, [String])
