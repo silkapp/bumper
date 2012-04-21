@@ -1,10 +1,13 @@
 Name:             bumper
 Version:          0.4.1.1
-Synopsis:         Automatically bump package versions, also transitively
-Description:      Automatically bump package versions, also transitively
-Maintainer:       code@typlab.com
-Category:         typLab
-License:          OtherLicense
+Synopsis:         Automatically bump package versions, also transitively.
+Description:      Automatically bump package versions, also transitively.
+Author:           Silk
+Copyright:        (c) 2012, Silk
+Maintainer:       code@silkapp.com
+Homepage:         http://github.com/silkapp/bumper
+Category:         Development
+License:          BSD3
 License-File:     LICENSE
 Cabal-Version:    >= 1.6
 Build-Type:       Simple
