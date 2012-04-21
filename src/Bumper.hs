@@ -1,15 +1,15 @@
 module Main where
 
+import Config
 import Data.Label
 import Data.List
-import qualified Data.Map as M
+import Data.Version
 import Distribution.Package hiding (Package)
 import Distribution.Text
 import Distribution.Version
 import Package
-import Config
 import Version
-import Data.Version
+import qualified Data.Map as M
 import qualified Paths_bumper as Paths
 
 main :: IO ()

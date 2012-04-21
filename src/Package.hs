@@ -13,19 +13,19 @@ import Control.Monad
 import Data.Label
 import Data.List
 import Data.List.Split
-import qualified Data.Map as M
 import Data.Maybe
 import Data.Version
 import Distribution.Package hiding (Package)
 import Distribution.PackageDescription
-import Distribution.PackageDescription.Parse
 import Distribution.PackageDescription.Configuration
+import Distribution.PackageDescription.Parse
 import Distribution.Text
 import Distribution.Verbosity
 import System.IO.Strict
 import System.Process
 import Text.Regex
 import Version
+import qualified Data.Map as M
 
 data Package = Package
     { _name         :: PackageName

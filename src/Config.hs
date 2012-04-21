@@ -6,12 +6,12 @@ module Config where
 
 import Data.Label
 import Data.List.Split
-import qualified Data.Map as M
 import Data.Version
 import Distribution.Package
 import Distribution.Text
 import System.Console.GetOpt
 import System.Environment
+import qualified Data.Map as M
 
 data Action = Run
             | ShowDeps
