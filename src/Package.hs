@@ -92,9 +92,9 @@ modifyVersion v s = subRegex (mkRegexWithOpts regex False False) s result
 modifyDependency :: Dependency -> String -> String
 modifyDependency (Dependency nm range) s = subRegex (mkRegexWithOpts regex False False) s result
   where regex = "(build-depends" ++ whiteReg ++ ":" ++ "[^:]*"
-              ++ "[ ,\n\t]" ++ display nm ++ whiteReg ++ ")[, ]([" ++ rangeChar ++ " \t\n]*[" ++ rangeChar ++ "])"
+              ++ "[ ,\n\t]" ++ display nm ++ whiteReg ++ ")([" ++ rangeChar ++ " \t\n]*[" ++ rangeChar ++ "])"
         rangeChar = "0-9.*&|()<>="
-        result = "\\1 " ++ printRange range
+        result = "\\1" ++ printRange range
 
 -- | Data structure containing package modifications
 type PackageChanges = (Maybe Version, [Dependency])
