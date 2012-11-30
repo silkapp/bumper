@@ -1,8 +1,10 @@
 module Main where
 
 import Config
+import Control.Monad
 import Data.Label
 import Data.List
+import Data.Maybe
 import Data.Version
 import Distribution.Package hiding (Package)
 import Distribution.Text
@@ -30,6 +32,12 @@ run :: Config -> (Packages -> Changes -> IO ()) -> IO ()
 run conf act =
   do -- Load packages
      ps   <- packages
+
+     --Check for non-existent packages
+     let changePks = map fst (get setVersion conf) ++ concat (M.elems (get bump conf))
+         notFound = filter (not . isJust . flip lookupPackage ps) changePks
+     when (not $ null notFound) $ putStrLn $ "[Warning] packages not found: " ++ (intercalate "," $ map display notFound)
+
      -- Retrieve base versions
      base <- maybe (return ps) (flip getBaseVersions ps) $ get global conf
      let changed = (if get transitive conf then trans base else id)
