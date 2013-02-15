@@ -4,6 +4,7 @@
   #-}
 module Config where
 
+import Control.Monad
 import Data.Label
 import Data.List.Split
 import Data.Version
@@ -70,7 +71,12 @@ options = [ Option ['m'] ["major"]         (ReqArg (addBumps 1) "PACKAGE(,PACKAG
 getConfig :: IO Config
 getConfig =
   do args <- getArgs
-     (opts, _) <- processArgs defaultConfig options header args
+     opts <- processArgs defaultConfig options header args
+     uncurry checkConfig opts
+
+checkConfig :: Config -> [String] -> IO Config
+checkConfig opts rest =
+  do when (not . null $ rest) (error "Trailing options. Did you forget a flag?")
      return opts
 
 processArgs :: a -> [OptDescr (a -> a)] -> String -> [String] -> IO (a, [String])
