@@ -4,7 +4,7 @@ Synopsis:         Automatically bump package versions, also transitively.
 Description:      Automatically bump package versions, also transitively.
 Author:           Silk
 Copyright:        (c) 2012, Silk
-Maintainer:       code@silkapp.com
+Maintainer:       code@silk.co
 Homepage:         http://github.com/silkapp/bumper
 Category:         Development
 License:          BSD3
