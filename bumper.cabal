@@ -14,6 +14,9 @@ License-File:     LICENSE
 Cabal-Version:    >= 1.6
 Build-Type:       Simple
 
+Extra-Source-Files: README.md
+                    CHANGELOG.md
+
 Executable bumper
   Build-Depends:    base == 4.*
                   , Cabal        >= 1.6    && < 1.19
