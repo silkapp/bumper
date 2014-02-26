@@ -3,6 +3,13 @@ Bumper is a tool for working with cabal packages. It lets you manage the version
 
 It's useful if you have a set of packages that you develop together.
 
+You can install the latest version from [Hackage](http://hackage.haskell.org/package/bumper)
+```shell
+$ cabal install bumper
+```
+or try the git version if you are feeling adventurous.
+
+
 To get started you should have all projects under a common directory, such as
 ```
 project/package-1
