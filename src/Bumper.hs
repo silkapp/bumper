@@ -69,7 +69,7 @@ trans ps = fix (transStep ps)
 transStep :: Packages -> Changes -> Changes
 transStep ps old = new <.> old
   where deps = filter (not . null . dependencyUpdates old) ps
-        new  = M.fromList . map (\p -> (get name p, bumpPosition 2 (get version p))) $ deps
+        new  = M.fromList . map (\p -> (get name p, bumpPosition 3 (get version p))) $ deps
 
 fix :: (Eq a) => (a -> a) -> a -> a
 fix f a | b == a    = a
