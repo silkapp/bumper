@@ -1,9 +1,9 @@
 Name:             bumper
-Version:          0.6
+Version:          0.6.0.1
 Synopsis:         Automatically bump package versions, also transitively.
 Description:      Automatically bump package versions, also transitively.
                   .
-                  Readme: <https://www.github.com/silkapp/bumper/blob/master/CHANGELOG.md>
+                  Readme: <https://www.github.com/silkapp/bumper/blob/master/README.md>
 Author:           Silk
 Copyright:        (c) 2012, Silk
 Maintainer:       code@silk.co

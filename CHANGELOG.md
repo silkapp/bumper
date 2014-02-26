@@ -1,3 +1,7 @@
+## 0.6.0.1
+
+* Fixed link to README in .cabal
+
 ## 0.6
 
 * Added documentation and changelog
