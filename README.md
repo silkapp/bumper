@@ -100,7 +100,7 @@ b/b.cabal
 
 c/c.cabal
 -version:             0.1
-+version:             0.1.1
++version:             0.1.0.1
 -                     , a == 0.1.*
 +                     , a == 0.2.*
 ```
