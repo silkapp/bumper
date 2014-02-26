@@ -43,7 +43,7 @@ Usage: bumper [OPTIONS...], with the following options:
 
 * Bumper respects version ranges you have specified, if `b` depends on `a >= 0.1 && < 0.3` and you bump `a` to `0.2.3` the bound will not change, but if you bump `a` to `0.3` `b`'s dependency will change to `a == 0.3.*`
 
-* If you depend on a specific version range (minor, major, ...) the level of the range may change after bumper. Depending on `a == 0.1.2.*` and doing a major bump of `a` will change your dependency to `a == 0.2.*`, but...
+* If you depend on a specific version range (minor, major, ...) the level of the range may change after bumping. Depending on `a == 0.1.2.*` and doing a major bump of `a` will change your dependency to `a == 0.2.*`, but...
 
 * If you have an explicit version dependency (`a == 0.1.0.1`) then a major bump of `a` will result in `a == 0.2`.
 
