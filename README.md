@@ -1,3 +1,6 @@
+# Bumper
+
+[![Build Status](https://travis-ci.org/silkapp/bumper.svg?branch=master)](https://travis-ci.org/silkapp/bumper)
 
 Bumper is a tool for working with cabal packages. It lets you manage the version bounds of packages by transitively bumping packages (and their dependencies transitively), without you needing to edit the cabal files manually.
 
