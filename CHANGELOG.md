@@ -1,8 +1,12 @@
-## 0.6.0.2
+#### 0.6.0.3
+
+* Allow Cabal 1.22.*
+
+#### 0.6.0.2
 
 * Allow Cabal 1.20.*
 
-## 0.6.0.1
+#### 0.6.0.1
 
 * Fixed link to README in .cabal
 
