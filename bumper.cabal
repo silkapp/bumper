@@ -30,6 +30,7 @@ executable bumper
   other-modules:
     Config
     Package
+    Paths_bumper
     Version
   build-depends:
       base == 4.*
