@@ -1,6 +1,7 @@
 #### 0.6.0.3
 
 * Allow Cabal 1.22.*
+* Allow process 1.3.*
 
 #### 0.6.0.2
 
