@@ -6,8 +6,6 @@
   #-}
 module Package where
 
-import Prelude hiding (readFile)
-
 import Control.Applicative
 import Control.Monad
 import Data.Label
@@ -26,6 +24,8 @@ import System.Process
 import Text.Regex
 import Version
 import qualified Data.Map as M
+
+import Prelude hiding (readFile)
 
 data Package = Package
     { _name         :: PackageName
